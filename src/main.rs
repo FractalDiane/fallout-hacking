@@ -1,86 +1,103 @@
 mod bi_map;
 mod hacking_puzzle;
 
-use std::io;
-//use ratatui::{crossterm::{event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand}, prelude::*, widgets::{Block, Paragraph}};
+use std::io::{self, stdout};
+use ratatui::{crossterm::{event::{self, Event, KeyCode}, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen}, ExecutableCommand}, prelude::*, widgets::Paragraph};
 
 use hacking_puzzle::{HackingPuzzle, GuessResult};
 
 fn main() -> io::Result<()> {
-	/*enable_raw_mode()?;
+	enable_raw_mode()?;
 	stdout().execute(EnterAlternateScreen)?;
 	let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
+	let mut puzzle = HackingPuzzle::generate(0);
+	let mut current_text_entry = String::with_capacity(24);
+
 	let mut should_quit = false;
 	while !should_quit {
-		terminal.draw(ui)?;
-		should_quit = handle_events()?;
-	}
+		terminal.draw(|frame| {
+			frame.render_widget(
+				Paragraph::new(Text::raw("ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL")),
+				Rect::new(0, 0, frame.size().width, frame.size().height),
+			);
 
-	disable_raw_mode()?;
-	stdout().execute(LeaveAlternateScreen)?;*/
+			frame.render_widget(
+				Paragraph::new(Text::raw(format!("{} ATTEMPT(S) LEFT: {}", puzzle.get_guesses_left(), "■ ".repeat(puzzle.get_guesses_left())))),
+				Rect::new(0, 3, frame.size().width, frame.size().height),
+			);
 
-	/*let mut max = 396;
-	let mut rng = thread_rng();
-	let normal_distr = Normal::new(WORD_DISTANCE_MEAN, WORD_DISTNACE_STDDEV).unwrap();
-	for _ in 0..16 {
-		println!("{}", (normal_distr.sample(&mut rng).round() as usize).clamp(7, 55));
-	}
-	/*while max > 0 {
-		let midpoint = max / 2;
-		let index = rng.gen_range(midpoint - 22..=midpoint + 22);
-		println!("{}", index);
-		max = index;
-	}*/*/
+			frame.render_widget(
+				Paragraph::new(Text::raw(puzzle.get_full_terminal_text())),
+				Rect::new(0, 5, frame.size().width, frame.size().height),
+			);
 
-	let mut puzzle = HackingPuzzle::generate(0);
-	println!("{}", puzzle.get_full_terminal_text());
+			frame.render_widget(
+				Paragraph::new(Text::raw(format!("> {}", current_text_entry))),
+				Rect::new(40, 21, frame.size().width, frame.size().height),
+			);
+		})?;
 
-	while puzzle.get_guesses_left() > 0 {
-		let mut input = String::with_capacity(10);
-		io::stdin().read_line(&mut input).unwrap();
-		match puzzle.guess_word(&input.trim_end().to_lowercase()) {
-			GuessResult::Correct => {
-				println!("Exact match!");
-				return Ok(());
-			},
+		if event::poll(std::time::Duration::from_millis(50))? {
+			if let Event::Key(key) = event::read()? {
+				if key.kind == event::KeyEventKind::Press || key.kind == event::KeyEventKind::Repeat {
+					match key.code {
+						KeyCode::Char(chr) => {
+							if current_text_entry.len() < 24 {
+								current_text_entry.push(chr);
+							}
+						},
 
-			GuessResult::WrongWord(letters_correct, letters_total) => {
-				println!("Entry denied\n{}/{} correct.\n", letters_correct, letters_total);	
-			},
+						KeyCode::Backspace => {
+							if !current_text_entry.is_empty() {
+								current_text_entry.pop().unwrap();
+							}
+						},
 
-			GuessResult::FoundBracketSequence(allowance_replenished) => {
-				if allowance_replenished {
-					println!("Allowance replenished.");
-				} else {
-					println!("Dud removed.");
+						KeyCode::Enter => {
+							let guess = current_text_entry.trim_end().to_lowercase();
+							if guess == "quit" {
+								should_quit = true;
+							} else {
+								match puzzle.guess_word(&guess) {
+									GuessResult::Correct => {
+										println!("Exact match!");
+										return Ok(());
+									},
+						
+									GuessResult::WrongWord(letters_correct, letters_total) => {
+										println!("Entry denied\n{}/{} correct.\n", letters_correct, letters_total);
+										if puzzle.get_guesses_left() == 0 {
+											should_quit = true;
+										}
+									},
+						
+									GuessResult::FoundBracketSequence(allowance_replenished) => {
+										if allowance_replenished {
+											println!("Allowance replenished.");
+										} else {
+											println!("Dud removed.");
+										}
+									},
+						
+									_ => {
+										println!("Invalid");
+									},
+								}
+							}
+
+							current_text_entry.clear();
+						},
+
+						_ => {},
+					}
 				}
-			},
-
-			_ => {
-				println!("Invalid");
-			},
-		}
-	}
-
-	Ok(())
-}
-
-/*fn handle_events() -> io::Result<bool> {
-	if event::poll(std::time::Duration::from_millis(50))? {
-		if let Event::Key(key) = event::read()? {
-			if key.kind == event::KeyEventKind::Press && key.code == KeyCode::Char('q') {
-				return Ok(true);
 			}
 		}
 	}
-	
-	Ok(false)
-}
 
-fn ui(frame: &mut Frame) {
-	frame.render_widget(
-		Paragraph::new(Text::raw("Hello\nThere\nThis\nIs\nA\nTest")),//.block(Block::bordered().title("Greeting")),
-		frame.size(),
-	);
-}*/
+	disable_raw_mode()?;
+	stdout().execute(LeaveAlternateScreen)?;
+
+	Ok(())
+}

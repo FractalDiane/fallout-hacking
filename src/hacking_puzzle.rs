@@ -159,20 +159,19 @@ impl HackingPuzzle {
 
 	pub fn guess_word(&mut self, word: &str) -> GuessResult {
 		if self.word_indices_in_text.get_left(&word).is_some() {
-			if word == self.words_list[self.correct_word_index] {
+			let correct_word = &self.words_list[self.correct_word_index];
+			let mut chars_correct = 0;
+			for (guess_char, actual_chr) in word.chars().zip(correct_word.chars()) {
+				if guess_char == actual_chr {
+					chars_correct += 1;
+				}
+			}
+
+			if chars_correct == correct_word.len() { 
 				GuessResult::Correct
 			} else {
 				self.guesses_left -= 1;
-
-				let correct_word = &self.words_list[self.correct_word_index];
-				let mut chars_correct = 0;
-				for (guess_char, actual_chr) in word.chars().zip(correct_word.chars()) {
-					if guess_char == actual_chr {
-						chars_correct += 1;
-					}
-				}
-
-				GuessResult::WrongWord(chars_correct, self.words_list[self.correct_word_index].len())
+				GuessResult::WrongWord(chars_correct, correct_word.len())
 			}
 		} else if *self.bracket_sequences_remaining.get(word).unwrap_or(&0) > 0 {
 			*self.bracket_sequences_remaining.entry(word.to_string()).or_default() -= 1;
