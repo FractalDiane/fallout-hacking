@@ -48,11 +48,14 @@ impl HackingPuzzle {
 		let mut word_indices_in_text = BiMap::<&'static str, usize>::with_capacity(selected_wordlist.len());
 		
 		{
+			let mut word_order = (0..selected_wordlist.len()).collect::<Vec<usize>>();
+			word_order.shuffle(&mut rng);
+
 			let normal_distr = Normal::new(WORD_DISTANCE_MEAN, WORD_DISTNACE_STDDEV).unwrap();
 			let mut current_index = 0;
-			for word in *selected_wordlist {
+			for word_index in word_order {
 				let distance = (normal_distr.sample(&mut rng).round() as usize).clamp(7, 55);
-				word_indices_in_text.insert(word, current_index + distance);
+				word_indices_in_text.insert(selected_wordlist[word_index], current_index + distance);
 				current_index += distance;
 			}
 		}
